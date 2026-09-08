@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "server": "npx tsx watch ./src/server.ts",
     "start": "npx tsx ./src/index.ts",
     "build": "tsc"
   },
@@ -13,6 +14,7 @@
   "type": "module",
   "devDependencies": {
     "@types/node": "^26.4.1",
+    "ngrok": "^5.0.0-beta.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   }
