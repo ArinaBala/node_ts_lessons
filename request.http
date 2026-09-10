@@ -1,0 +1,12 @@
+GET http://localhost:4200/books
+
+###
+
+POST http://localhost:4200
+Content-Type: application/json
+
+{
+  "name": "test book",
+  "price": 2000,
+  "is_active": true
+}

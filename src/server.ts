@@ -1,104 +1,115 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import { URL } from "node:url";
 
-const PORT: number = 4200;
+import { books } from "./data/books.js";
+import { showAllBooks, showBook } from "./utils/showBooks.js";
 
-
-const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".svg", ".webp", ".gif"];
+const PORT = 4200;
 
 const server = http.createServer((req, res) => {
-    const PATH_TO_PAGES = path.join("src", "pages");
-    const PATH_TO_IMAGES = path.join("src", "images");
-    const PATH_TO_STYLES = path.join("src", "styles");
+    const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
+    const basePath = path.join("src");
 
-    const PATH_TO_INDEX_PAGE = path.join(PATH_TO_PAGES, "index.html");
-    const PATH_TO_ABOUT_PAGE = path.join(PATH_TO_PAGES, "about.html");
-    const PATH_TO_CATALOG_PAGE = path.join(PATH_TO_PAGES, "catalog.html");
-    const PATH_TO_EVENTS_PAGE = path.join(PATH_TO_PAGES, "events.html");
-    const PATH_TO_CONTACTS_PAGE = path.join(PATH_TO_PAGES, "contacts.html");
+    
+    if (req.method === "POST" && url.pathname === "/books") {
+        let body = "";
+        req.on("data", chunk => body += chunk);
+        req.on("end", () => {
+            try {
+                const { title, price, is_active, image } = JSON.parse(body);
+                
+                if (!title || typeof price !== "number" || typeof is_active !== "boolean") {
+                    res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                    return res.end(JSON.stringify({ success: false, message: "Некоректні дані" }));
+                }
+
+                const newBook = {
+                    id: books.length ? books[books.length - 1].id + 1 : 1,
+                    title: title.trim(),
+                    price,
+                    is_active,
+                    ...(image ? { image } : {})
+                };
+
+                books.push(newBook);
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ success: true, message: "Успішно додано!", book: newBook }));
+            } catch {
+                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ success: false, message: "Невірний JSON" }));
+            }
+        });
+        return;
+    }
+
+    
+    if (req.method === "GET" && url.pathname === "/books") {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        return res.end(`<html><head><link rel="stylesheet" href="/styles/book.css"></head><body><div class="container">${showAllBooks(books)}</div></body></html>`);
+    }
 
   
-    if (req.method === "GET" && req.url?.startsWith("/styles/")) {
-        const styleName = path.basename(req.url);
-        const pathToStyle = path.join(PATH_TO_STYLES, styleName);
-        if (fs.existsSync(pathToStyle)) {
-            const content = fs.readFileSync(pathToStyle);
-            res.setHeader("Content-Type", "text/css; charset=utf-8");
-            res.write(content);
-            res.end();
-            return;
+    if (req.method === "GET" && url.pathname === "/book") {
+        const id = Number(url.searchParams.get("id"));
+        const book = books.find(b => b.id === id);
+
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        if (book) {
+            res.writeHead(200);
+            return res.end(showBook(book));
+        }
+        res.writeHead(404);
+        return res.end("Книга не знайдена");
+    }
+
+
+    if (req.method === "GET" && (url.pathname.startsWith("/styles/") || url.pathname.startsWith("/images/"))) {
+        const filePath = path.join(basePath, url.pathname);
+        if (fs.existsSync(filePath)) {
+            const ext = path.extname(filePath).toLowerCase();
+            const mimeTypes: Record<string, string> = {
+                ".css": "text/css",
+                ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                ".png": "image/png", ".svg": "image/svg+xml",
+                ".webp": "image/webp", ".gif": "image/gif"
+            };
+            res.writeHead(200, { "Content-Type": `${mimeTypes[ext] || "application/octet-stream"}; charset=utf-8` });
+            return res.end(fs.readFileSync(filePath));
         }
     }
 
-    if (req.method === "GET" && req.url?.startsWith("/images/")) {
-        const imageName = path.basename(req.url);
-        const pathToImage = path.join(PATH_TO_IMAGES, imageName);
-        const ext = path.extname(imageName).toLowerCase();
+   
+    const routes: Record<string, string> = {
+        "/": "pages/index.html",
+        "/index.html": "pages/index.html",
+        "/about": "pages/about.html",
+        "/about.html": "pages/about.html",
+        "/events": "pages/events.html",
+        "/events.html": "pages/events.html",
+        "/contacts": "pages/contacts.html",
+        "/contacts.html": "pages/contacts.html"
+    };
 
-        
-        if (ALLOWED_IMAGE_EXTENSIONS.includes(ext) && fs.existsSync(pathToImage)) {
-            const content = fs.readFileSync(pathToImage);
-            
-           
-            let contentType = "application/octet-stream";
-            if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
-            else if (ext === ".png") contentType = "image/png";
-            else if (ext === ".svg") contentType = "image/svg+xml";
-            else if (ext === ".webp") contentType = "image/webp";
-            else if (ext === ".gif") contentType = "image/gif";
-
-            res.setHeader("Content-Type", contentType);
-            res.write(content);
-            res.end();
-            return;
-        } else {
-            res.statusCode = 404;
-            res.setHeader("Content-Type", "text/plain; charset=utf-8");
-            res.write("Картинку не знайдено або заборонений формат");
-            res.end();
-            return;
-        }
+    if (req.method === "GET" && routes[url.pathname]) {
+        const filePath = path.join(basePath, routes[url.pathname]);
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        return res.end(fs.readFileSync(filePath));
     }
 
-    if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
-        const content = fs.readFileSync(PATH_TO_INDEX_PAGE);
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.write(content.toString());
-    }
-    else if ((req.method === "POST" && req.url === "/") || (req.method === "GET" && (req.url === "/about" || req.url === "/about.html"))) {
-        const content = fs.readFileSync(PATH_TO_ABOUT_PAGE);
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.write(content.toString());
-    }
-    else if (req.method === "GET" && (req.url === "/catalog" || req.url === "/catalog.html")) {
-        const content = fs.readFileSync(PATH_TO_CATALOG_PAGE);
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.write(content.toString());
-    }
-    else if (req.method === "GET" && (req.url === "/events" || req.url === "/events.html")) {
-        const content = fs.readFileSync(PATH_TO_EVENTS_PAGE);
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.write(content.toString());
-    }
-    else if (req.method === "GET" && (req.url === "/contacts" || req.url === "/contacts.html")) {
-        const content = fs.readFileSync(PATH_TO_CONTACTS_PAGE);
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.write(content.toString());
-    }
-    else if (req.method === "PUT") {
-        res.setHeader("Content-Type", "text/plain; charset=utf-8");
-        res.write(`Ти хочеш оновити дані. Request: ${req.method}`);
-    }
-    else {
-        res.statusCode = 404;
-        res.setHeader("Content-Type", "text/plain; charset=utf-8");
-        res.write("Сторінку не знайдено (404)");
+    
+    if (req.method === "GET" && (url.pathname === "/catalog" || url.pathname === "/catalog.html")) {
+        const template = fs.readFileSync(path.join(basePath, "pages/catalog.html"), "utf-8");
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        return res.end(template.replace("<!-- BOOKS -->", showAllBooks(books)));
     }
 
-    res.end();
-})
+   
+    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("Сторінку не знайдено (404)");
+});
 
 server.listen(PORT, () => {
-    console.log(`Server http://localhost:${PORT} has been started...`)
-})
+    console.log(`Server http://localhost:${PORT} has been started...`);
+});

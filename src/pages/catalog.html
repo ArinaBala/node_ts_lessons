@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ПУБЛІЧНА БІБЛІОТЕКА МОПСІВ — Найлапковіший Каталог</title>
     <link rel="stylesheet" href="/styles/catalog.css">
+    <link rel="stylesheet" href="/styles/book.css">
     
 </head>
 <body>
@@ -36,60 +37,59 @@
             <button>Шукати 🐾</button>
         </div>
     </div>
+<div class="card" style="margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+    <h3 style="margin-bottom: 1rem; color: var(--primary);">Додати нову книгу</h3>
+    <form id="addBookForm">
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.3rem; font-weight: 600;">Назва книги:</label>
+            <input type="text" id="title" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.3rem; font-weight: 600;">Ціна:</label>
+            <input type="number" id="price" min="0" step="0.01" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.3rem; font-weight: 600;">
+                <input type="checkbox" id="is_active" checked>
+                Книга доступна
+            </label>
+        </div>
+        <button type="submit" style="background: var(--secondary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; width: 100%;">Додати книгу</button>
+    </form>
+</div>
 
+<script>
+    document.getElementById("addBookForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const bookData = {
+            title: document.getElementById("title").value.trim(),
+            price: Number(document.getElementById("price").value),
+            is_active: document.getElementById("is_active").checked
+        };
+
+        try {
+            const response = await fetch("/books", {
+                method: "POST",
+                headers: { "Content-Type": "application/json; charset=utf-8" },
+                body: JSON.stringify(bookData)
+            });
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || "Помилка при додаванні");
+            }
+
+            alert(result.message);
+            location.reload();
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Помилка при додаванні");
+        }
+    });
+</script>
     <main class="container">
         <div class="catalog-grid">
-            <div class="book-card">
-                <div>
-                    <div class="book-genre">Солодкий сон і храп</div>
-                    <h3>Філософія денного сну на дивані</h3>
-                    <div class="book-author">Професор Бублик</div>
-                    <p>Збірка захопливих есеїв про те, як правильно зайняти найкраще місце на подушці та ігнорувати господарів.</p>
-                </div>
-                <div>
-                    <div class="book-status">✓ В наявності (Будка №2)</div>
-                    <a href="#" class="book-btn">Забронювати 🦴</a>
-                </div>
-            </div>
-
-            <div class="book-card">
-                <div>
-                    <div class="book-genre">ІТ та кібер-мопси</div>
-                    <h3>Чистий код: лапамодульний рефакторинг</h3>
-                    <div class="book-author">Старший Мопс Роберт</div>
-                    <p>Класичний посібник з написання коду, який не падає від одного погляду карих очей.</p>
-                </div>
-                <div>
-                    <div class="book-status" style="color: #c62828; background: #ffebee;">✕ Видано (повернення 20.09)</div>
-                    <a href="#" class="book-btn" style="background: linear-gradient(135deg, #e69a47, #bc8a5f);">Стати в чергу 🐾</a>
-                </div>
-            </div>
-
-            <div class="book-card">
-                <div>
-                    <div class="book-genre">Наука випрошування</div>
-                    <h3>Аеродинаміка сумних оченят</h3>
-                    <div class="book-author">Доктор Шарлотта</div>
-                    <p>Від першої зморшки на лобі до шматочка сиру з холодильника: покрокова інструкція маніпуляції людиною.</p>
-                </div>
-                <div>
-                    <div class="book-status">✓ В наявності (Будка №1)</div>
-                    <a href="#" class="book-btn">Забронювати 🦴</a>
-                </div>
-            </div>
-
-            <div class="book-card">
-                <div>
-                    <div class="book-genre">Казки для зморщених</div>
-                    <h3>Пригоди Тохарика у світі котів</h3>
-                    <div class="book-author">Нестор Храпун</div>
-                    <p>Веселі та небезпечні пригоди хороброго мопса, який намагався зрозуміти логіку дворових котів.</p>
-                </div>
-                <div>
-                    <div class="book-status">✓ В наявності (Цуценячий зал)</div>
-                    <a href="#" class="book-btn">Забронювати 🦴</a>
-                </div>
-            </div>
+            <!-- BOOKS -->
         </div>
     </main>
 
