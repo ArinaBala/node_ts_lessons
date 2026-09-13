@@ -1,115 +1,146 @@
-import http from "node:http";
-import fs from "node:fs";
-import path from "node:path";
-import { URL } from "node:url";
+import express from "express"
+import "dotenv/config"
+import { books } from "./data/books.js"
+import { BookResponceType } from "./types/BookResponceType.js"
 
-import { books } from "./data/books.js";
-import { showAllBooks, showBook } from "./utils/showBooks.js";
+const cl = console.log
+const PORT = process.env.PORT || 3200
+const HOST = process.env.HOST || "localhost"
 
-const PORT = 4200;
+const app = express()
 
-const server = http.createServer((req, res) => {
-    const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
-    const basePath = path.join("src");
+app.use(express.json())
 
-    
-    if (req.method === "POST" && url.pathname === "/books") {
-        let body = "";
-        req.on("data", chunk => body += chunk);
-        req.on("end", () => {
-            try {
-                const { title, price, is_active, image } = JSON.parse(body);
-                
-                if (!title || typeof price !== "number" || typeof is_active !== "boolean") {
-                    res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-                    return res.end(JSON.stringify({ success: false, message: "Некоректні дані" }));
-                }
+app.get('/', (req, res) => {
+    res.writeHead(200, {
+        "Content-Type": "text/html"
+    })
+    res.end("<h2>Hello from me</h2>")
+})
 
-                const newBook = {
-                    id: books.length ? books[books.length - 1].id + 1 : 1,
-                    title: title.trim(),
-                    price,
-                    is_active,
-                    ...(image ? { image } : {})
-                };
+// Роут для пошуку за частиною назви та статусом is_active
+app.get('/books/:title/:is_active', (req, res) => {
+    const searchTitle = req.params.title.toLowerCase();
+    const isActive = req.params.is_active === 'true';
 
-                books.push(newBook);
-                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(JSON.stringify({ success: true, message: "Успішно додано!", book: newBook }));
-            } catch {
-                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(JSON.stringify({ success: false, message: "Невірний JSON" }));
-            }
-        });
-        return;
-    }
+    // Фільтруємо масив книжок
+    const filteredBooks = books.filter((book) => {
+        const matchesTitle = book.title.toLowerCase().includes(searchTitle);
+        const matchesActive = book.is_active === isActive;
+        return matchesTitle && matchesActive;
+    });
 
-    
-    if (req.method === "GET" && url.pathname === "/books") {
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        return res.end(`<html><head><link rel="stylesheet" href="/styles/book.css"></head><body><div class="container">${showAllBooks(books)}</div></body></html>`);
-    }
-
-  
-    if (req.method === "GET" && url.pathname === "/book") {
-        const id = Number(url.searchParams.get("id"));
-        const book = books.find(b => b.id === id);
-
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        if (book) {
-            res.writeHead(200);
-            return res.end(showBook(book));
-        }
-        res.writeHead(404);
-        return res.end("Книга не знайдена");
-    }
-
-
-    if (req.method === "GET" && (url.pathname.startsWith("/styles/") || url.pathname.startsWith("/images/"))) {
-        const filePath = path.join(basePath, url.pathname);
-        if (fs.existsSync(filePath)) {
-            const ext = path.extname(filePath).toLowerCase();
-            const mimeTypes: Record<string, string> = {
-                ".css": "text/css",
-                ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-                ".png": "image/png", ".svg": "image/svg+xml",
-                ".webp": "image/webp", ".gif": "image/gif"
-            };
-            res.writeHead(200, { "Content-Type": `${mimeTypes[ext] || "application/octet-stream"}; charset=utf-8` });
-            return res.end(fs.readFileSync(filePath));
-        }
-    }
-
-   
-    const routes: Record<string, string> = {
-        "/": "pages/index.html",
-        "/index.html": "pages/index.html",
-        "/about": "pages/about.html",
-        "/about.html": "pages/about.html",
-        "/events": "pages/events.html",
-        "/events.html": "pages/events.html",
-        "/contacts": "pages/contacts.html",
-        "/contacts.html": "pages/contacts.html"
+    const exist_book = filteredBooks.length > 0;
+    const responce: BookResponceType = {
+        data: exist_book ? filteredBooks : null,
+        error: exist_book ? null : "No books found matching this criteria",
+        status: exist_book ? 200 : 404
     };
 
-    if (req.method === "GET" && routes[url.pathname]) {
-        const filePath = path.join(basePath, routes[url.pathname]);
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        return res.end(fs.readFileSync(filePath));
-    }
+    res.writeHead(responce.status, {
+        "Content-Type": "application/json; charset=utf-8"
+    });
+    res.end(JSON.stringify(responce));
+});
 
+app.get('/books/:id', (req, res) => {
+    const id: number = +req.params.id
+    const book = books.find((b) => b.id === id);
+    const exist_book: boolean = book !== undefined
+    const responce: BookResponceType = {
+        data: book ?? null, // Виправлено: якщо book немає, повертається null замість undefined
+        error: exist_book ? null : "The book is not found",
+        status: exist_book ? 200 : 404
+    };
     
-    if (req.method === "GET" && (url.pathname === "/catalog" || url.pathname === "/catalog.html")) {
-        const template = fs.readFileSync(path.join(basePath, "pages/catalog.html"), "utf-8");
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        return res.end(template.replace("<!-- BOOKS -->", showAllBooks(books)));
+    res.writeHead(responce.status, {
+        "Content-Type": "application/json; charset=utf-8"
+    })
+    res.end(JSON.stringify(responce))
+}) 
+
+app.post('/books', (req, res) => {
+    const { title, price, is_active, image } = req.body;
+
+    let status_code: number = 201;
+    const responce: BookResponceType = {
+        data: null,
+        error: null,
+        status: 201
     }
 
-   
-    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("Сторінку не знайдено (404)");
-});
+    if (!title || typeof price !== "number" || typeof is_active !== "boolean") {
+        status_code = 400;
+        responce.status = status_code;
+        responce.error = "Invalid book data";
+    } else {
+        const newBook = {
+            id: books.length ? books[books.length - 1].id + 1 : 1,
+            title: title.trim(),
+            price,
+            is_active,
+            ...(image ? { image } : {})
+        };
 
-server.listen(PORT, () => {
-    console.log(`Server http://localhost:${PORT} has been started...`);
-});
+        books.push(newBook);
+        responce.data = newBook;
+    }
+
+    res.writeHead(status_code, {
+        "Content-Type": "application/json; charset=utf-8"
+    });
+    res.end(JSON.stringify(responce));
+})
+
+app.delete('/books/:id', (req, res) => {
+    const id: number = +req.params.id
+    const bookIndex = books.findIndex((b) => b.id === id);
+
+    let status_code: number = 200;
+    const responce: BookResponceType = {
+        data: null,
+        error: null,
+        status: 200
+    }
+
+    if (bookIndex === -1) {
+        status_code = 404;
+        responce.status = status_code;
+        responce.error = "The book is not found or not deleted";
+    } else {
+        const deletedBook = books.splice(bookIndex, 1)[0];
+        status_code = 200;
+        responce.status = status_code;
+        responce.data = deletedBook;
+    }
+
+    res.writeHead(status_code, {
+        "Content-Type": "application/json; charset=utf-8"
+    });
+    res.end(JSON.stringify(responce));
+})
+
+app.get('/books', (req, res) => {
+    const exist_book: boolean = books.length > 0
+    const responce: BookResponceType = {
+        data: exist_book ? books : null,
+        error: exist_book ? null : "Books list is empty",
+        status: exist_book ? 200 : 404
+    };
+
+    res.writeHead(responce.status, {
+        "Content-Type": "application/json; charset=utf-8"
+    })
+    res.end(JSON.stringify(responce))
+})
+
+app.get('/book', (req, res) => {
+    res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8"
+    })
+    res.end(JSON.stringify(books[0]))
+})
+
+app.listen(PORT, () => {
+    cl(`Server has been started http://${HOST}:${PORT}`)
+})

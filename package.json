@@ -13,9 +13,14 @@
   "license": "ISC",
   "type": "module",
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^26.4.1",
     "ngrok": "^5.0.0-beta.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
   }
 }
