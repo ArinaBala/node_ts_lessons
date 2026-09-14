@@ -1,8 +1,11 @@
+
 type BookType = {
-  id: number ;
+  id: number;
   title: string;
   price: number;
   is_active: boolean;
   image?: string;
+  authorIds: number[]; 
 };
-export {BookType};
+
+export { BookType };
