@@ -1,4 +1,4 @@
-import express from "express"
+import express, {Request} from "express"
 import "dotenv/config"
 import { books } from "./data/books.js"
 import { BookResponceType } from "./types/BookResponceType.js"
@@ -7,20 +7,45 @@ import { BookType } from "./types/BookType.js"
 //middleware - попередній обробник
 import { authors } from "./data/authors.js";
 import router from "./routes/bookRoutes.js"
+import path from "node:path"
+import ejs from "ejs"
+import { fileURLToPath } from "node:url"
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const cl = console.log
 const PORT = process.env.PORT || 3200
-const HOST = process.env.HOST || "localhost"
+const HOST = process.env.HOST || "http://localhost"
 
 const app = express()
+app.use(express.static('public'));
+
+app.set("views", path.join(__dirname, "..",path.sep,"views"));
+app.set("view engine", "ejs")
+
 
 function compareBook(b1: BookType, b2: BookType): number {
     return b2.id, b1.id
 }
 
+
+
+app.use(express.static("public"))
+
 app.use(express.json())
 
-// Підключаємо твій роутер для базових маршрутів книг
+app.get('/', (req:Request<null,null,null,{title:string}>,res)=>
+{
+
+res.render("pages2/home",{
+    name:req.query.title
+})
+
+})
+
+
 app.use('/books', router)
 
 app.get('/', (req, res) => {

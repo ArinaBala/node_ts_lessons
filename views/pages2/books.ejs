@@ -1,0 +1,80 @@
+<style>
+    .books-page {
+        max-width: 960px;
+        margin: 40px auto;
+        padding: 0 20px;
+        color: #24313d;
+        font-family: Arial, sans-serif;
+    }
+
+    .books-page h1 {
+        margin-bottom: 24px;
+        font-size: 32px;
+    }
+
+    .books-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        padding: 0;
+        list-style: none;
+    }
+
+    .book {
+        overflow: hidden;
+        border: 1px solid #dce3e8;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 3px 10px rgb(36 49 61 / 8%);
+    }
+
+    .book-image {
+        display: block;
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        background: #eef2f4;
+    }
+
+    .book-info {
+        padding: 16px;
+    }
+
+    .book-title {
+        margin: 0 0 10px;
+        font-size: 18px;
+    }
+
+    .book-price {
+        margin: 0;
+        color: #64727d;
+    }
+</style>
+
+<main class="books-page">
+    <h1>Books</h1>
+        
+    <ul class="books-list">
+        <% books.forEach(book => { %>
+            <li class="book">
+                <% 
+                    
+                    let imgName = 'default.jpg';
+                    if (book.title.includes('Кобзар')) imgName = '1.jpg';
+                    else if (book.title.includes('Тигролови')) imgName = '2.jpg';
+                    else if (book.title.includes('1984')) imgName = '3.jpg';
+                    else if (book.title.includes('Гаррі Поттер')) imgName = '4.jpg';
+                    else if (book.title.includes('Маленький принц')) imgName = '5.jpg';
+                    else if (book.title.includes('pug test')) imgName = '6.jpg';
+                %>
+
+                <img class="book-image" src="/images/<%= imgName %>" alt="<%= book.title %>">
+                
+                <div class="book-info">
+                    <h2 class="book-title"><%= book.title %></h2>
+                    <p class="book-price"><%= book.price %> грн</p>
+                </div>
+            </li>
+        <% }) %>
+    </ul>
+</main>

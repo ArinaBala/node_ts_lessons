@@ -4,6 +4,8 @@ type showBooksType = (book:BookType)=>string;
  
 type getBookBYTitleType = (title:string, books:BookType[])=>BookType[]|null
 
+type compareBookType = (b1:BookType, b2:BookType)=>number
+
 const showBooks:showBooksType = (book)=>
 {
     return `<div class="book-card">
@@ -40,6 +42,10 @@ const getBooksByTittle:getBookBYTitleType = (title, books)=>{
         return books_filtred
     }
     return null; 
+}
+
+const compareBook:compareBookType = (b1:BookType, b2:BookType)=>{
+    return b2.id-b1.id
 }
 
 export {showAllBooks, showBook, showBooks, getBooksByTittle};

@@ -20,9 +20,9 @@ const server = http.createServer((req, res) => {
         req.on("data", chunk => body += chunk);
         req.on("end", () => {
             try {
-                const { title, price, is_active, image } = JSON.parse(body);
+                const { title, price, is_active, image, authorIds } = JSON.parse(body);
                 
-                if (!title || typeof price !== "number" || typeof is_active !== "boolean") {
+                if (!title || typeof price !== "number" || typeof is_active !== "boolean" || !Array.isArray(authorIds)) {
                     res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
                     return res.end(JSON.stringify({ success: false, message: "Некоректні дані" }));
                 }
@@ -32,6 +32,7 @@ const server = http.createServer((req, res) => {
                     title: title.trim(),
                     price,
                     is_active,
+                    authorIds,
                     ...(image ? { image } : {})
                 };
 

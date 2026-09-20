@@ -7,45 +7,40 @@ type BookCreateType = Omit<BookType, "id">;
  
 const bookRouter = Router();
 
-// 2) 
+
 bookRouter.get(
   "/",
   async (
-    req: Request<{}, BookResponceType, null, { title?: string }>,
+    req: Request<{}, any, null, { title?: string }>,
     res: Response,
   ) => {
-    const response: BookResponceType = {
-      data: null,
-      error: null,
-      status: 200,
-    };
-
     try {
       const { title } = req.query;
       let result;
 
       if (title !== undefined && title !== "undefined" && title.trim() !== "") {
-       
         result = await pool.query(
           "SELECT * FROM books WHERE title ILIKE $1",
           [`%${title}%`]
         );
       } else {
-        
         result = await pool.query("SELECT * FROM books");
       }
 
-      response.data = result.rows;
-      response.status = 200;
+      // Передаем полученные из БД строки в шаблон под ключом books
+      const books = result.rows;
+      
+      // Рендерим страницу
+      res.render("pages2/books", { books });
+
     } catch (error) {
       console.error(error);
-      response.error = "Internal server error";
-      response.status = 500;
+      res.status(500).send("Internal server error");
     }
-
-    res.status(response.status).json(response);
   },
 );
+// res.render("pages/books",{books});
+
 
 // 3) 
 bookRouter.get("/:id", async (req: Request<{ id: string }, BookResponceType>, res: Response) => {
@@ -183,3 +178,7 @@ bookRouter.put("/:id", async (req: Request<{ id: string }, BookResponceType, Boo
 });
  
 export default bookRouter;
+
+
+
+   

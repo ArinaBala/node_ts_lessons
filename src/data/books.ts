@@ -6,21 +6,24 @@ const books: Array<BookType> = [
     title: "Кобзар",
     price: 250,
     is_active: true,
-    authorIds: [1]
+    authorIds: [1],
+    image: "1.jpg"
   },
   {
     id: 2,
     title: "Тигролови",
     price: 320,
     is_active: true,
-    authorIds: [2]
+    authorIds: [2],
+    image: "2.jpg"
   },
   {
     id: 3,
     title: "1984",
     price: 400,
     is_active: true,
-    authorIds: [3]
+    authorIds: [3],
+    image: "3.jpg"
   },
   {
     id: 4,
