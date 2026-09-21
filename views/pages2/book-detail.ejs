@@ -1,0 +1,80 @@
+<main class="container my-5">
+    <div class="row">
+        <!-- Картинка книги -->
+        <div class="col-md-4 mb-4">
+            <img src="/images/<%= book.image || 'default.jpg' %>" class="img-fluid rounded shadow-sm w-100" alt="<%= book.title %>" style="max-height: 400px; object-fit: cover;">
+        </div>
+        
+        <!-- Информация о книге и форма редактирования -->
+        <div class="col-md-8">
+            <h1 class="mb-3"><%= book.title %></h1>
+            <h3 class="text-success mb-4"><%= book.price %> грн</h3>
+            
+            <p class="text-muted">Ця книга доступна для замовлення. Ви можете оновити інформацію про неї нижче або повернутися до загального каталогу.</p>
+            
+            <hr class="my-4">
+
+            <!-- Форма редактирования (метод PUT) -->
+            <h4 class="mb-3">Редагувати інформацію про книгу</h4>
+            <form id="editBookForm" class="needs-validation" novalidate>
+                <div class="mb-3">
+                    <label for="title" class="form-label">Назва книжки</label>
+                    <input type="text" class="form-control" id="title" value="<%= book.title %>" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="price" class="form-label">Ціна (грн)</label>
+                    <input type="number" class="form-control" id="price" value="<%= book.price %>" required>
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="is_active" <%= book.is_active ? 'checked' : '' %>>
+                    <label class="form-check-label" for="is_active">Активна (відображається в каталозі)</label>
+                </div>
+                
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary">Зберегти зміни</button>
+                    <a href="/books" class="btn btn-outline-secondary">← Назад до каталогу</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+
+<!-- Скрипт для отправки PUT-запроса -->
+<script>
+  const form = document.getElementById('editBookForm');
+  const bookId = '<%= book.id %>';
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const updatedData = {
+      title: document.getElementById('title').value,
+      price: Number(document.getElementById('price').value),
+      is_active: document.getElementById('is_active').checked
+    };
+
+    try {
+      const response = await fetch(`/books/${bookId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedData)
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert("Книжку успішно оновлено!");
+        window.location.href = '/books'; // Возвращаемся в каталог после сохранения
+      } else {
+        alert("Помилка: " + (result.error || "Не вдалося оновити"));
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Сталася помилка при відправці запиту");
+    }
+  });
+</script>
