@@ -2,10 +2,80 @@ import { Router, Request, Response } from "express";
 import { BookType } from "../types/BookType.js";
 import { BookResponceType } from "../types/BookResponceType.js";
 import { pool } from "../db/database.js";
+import path from "node:path"
+import multer from "multer"
+
+declare global {
+  namespace Express {
+    interface Request {
+      image?: string;
+    }
+  }
+}
 
 type BookCreateType = Omit<BookType, "id">;
  
 const bookRouter = Router();
+
+ const storage = multer.diskStorage({
+  destination:(req,file,cb)=>{
+    cb(null,path.join("public","images"))
+  },
+  filename:(req,file,cb)=>{
+    const uniqueFileName = Date.now()+'_'+file.originalname
+    req.image = uniqueFileName
+    cb(null,uniqueFileName)
+  }
+})
+const upload = multer({storage})
+
+
+bookRouter.get(
+  "/add-book",
+  (
+    req: Request,
+    res: Response
+  ) =>{
+    res.render("pages/bookForm", {title: "Add Book"})
+  },
+);
+
+bookRouter.post(
+  "/add-book",
+  upload.single("image"),
+  async (req: Request, res: Response) => {
+    try {
+      const { title, price, year } = req.body;
+      
+      // Проверка на пустой title, чтобы не падало с ошибкой
+      if (!title || title.trim() === "") {
+        return res.status(400).send("Title cannot be empty");
+      }
+
+      const is_active = req.body.is_active ? true : false;
+      const imageName = req.file ? req.file.filename : 'default.jpg';
+      const publicationYear = year ? Number(year) : null;
+      const parsedPrice = price ? Number(price) : 0;
+
+      // Записываем книгу в облачную базу данных PostgreSQL
+      const query = `
+        INSERT INTO books (title, price, is_active, image, publication_year) 
+        VALUES ($1, $2, $3, $4, $5) 
+        RETURNING *;
+      `;
+      const values = [title, parsedPrice, is_active, imageName, publicationYear];
+      
+      await pool.query(query, values);
+
+      // После успешного добавления перенаправляем пользователя на каталог книг
+      return res.redirect("/books");
+
+    } catch (error) {
+      console.error("Помилка при додаванні книги:", error);
+      return res.status(500).send("Internal server error");
+    }
+  }
+);
 
 // 1. Получение всех книг (каталог) с поддержкой поиска по названию
 bookRouter.get(
@@ -156,5 +226,8 @@ bookRouter.put("/:id", async (req: Request<{ id: string }, BookResponceType, Boo
 
   res.status(response.status).json(response);
 });
+
+
+
  
 export default bookRouter;

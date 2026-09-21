@@ -1,4 +1,4 @@
-import express, {Request} from "express"
+import express, {Request, Response} from "express"
 import "dotenv/config"
 import { books } from "./data/books.js"
 import { BookResponceType } from "./types/BookResponceType.js"
@@ -19,9 +19,7 @@ const HOST = process.env.HOST || "http://localhost"
 
 const app = express()
 
-
-
-
+app.use(express.urlencoded({extended:true}))
 
 // Правильное подключение статической папки public (для картинок)
 app.use(express.static(path.join(__dirname, '../public')));
@@ -31,11 +29,6 @@ app.set("view engine", "ejs")
 
 app.use(expressEjsLayouts)
 app.set("layout", path.join(__dirname, "..","views", "layouts", "main"))
-
-app.use(express.static(path.join(__dirname, '../public')));
-
-
-
 
 app.use(express.json())
 
@@ -47,8 +40,13 @@ app.get('/', (req: Request<null, null, null, { title: string }>, res) => {
     });
 });
 
-// 1. ВАЖНО: Роут для одной книги по ID должен стоить ВЫШЕ, чем app.use('/books', router)
-app.get("/books/:id", async (req, res) => {
+// 1. ВАЖНО: Специфичный роут для формы добавления ДОЛЖЕН БЫТЬ ВЫШЕ /books/:id
+app.get("/books/add-book", (req: Request, res: Response) => {
+   res.render("pages2/bookForm", { title: "Add Book" });
+});
+
+// 2. Детальная страница книги по ID
+app.get("/books/:id", async (req: Request, res: Response) => {
     try {
         const bookId = req.params.id;
         const result = await pool.query("SELECT * FROM books WHERE id = $1", [bookId]);
@@ -67,7 +65,7 @@ app.get("/books/:id", async (req, res) => {
     }
 });
 
-// 2. Общий роутер для книг (каталог) идет ниже
+// 3. Общий роутер для книг (каталог, POST, DELETE и т.д.)
 app.use('/books', router)
 
 app.get("/contacts", (req, res) => {
@@ -112,6 +110,14 @@ app.get('/authors/:id', (req, res) => {
 
 app.listen(Number(PORT), () => {
     cl(`Server has been started http://localhost:${PORT}`)
+});
+
+app.post("/books", (req: Request, res: Response) => {
+    // Вот здесь выводим то, что прилетело из формы в терминал:
+    console.log(req.body);
+
+    // Дальше идет твой код сохранения в базу или редирект...
+    res.redirect("/books");
 });
 
 // import express, {Request} from "express"

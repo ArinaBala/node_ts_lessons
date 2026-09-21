@@ -1,14 +1,18 @@
 <main class="container my-5">
-    <h1 class="mb-4">Books</h1>
-        
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Books</h1>
+        <!-- Кнопка перехода на форму добавления -->
+        <a href="/books/add-book" class="btn btn-success">+ Додати нову книгу</a>
+    </div>
+
+    <!-- Список существующих книг из базы -->
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
         <% books.forEach(book => { %>
             <div class="col">
                 <div class="card h-100 shadow-sm border-light position-relative">
                     
-                   
                     <a href="/books/<%= book.id %>" class="text-decoration-none text-dark flex-grow-1 d-flex flex-column">
-                        <img src="/images/<%= book.image ? book.image : 'default.jpg' %>" class="card-img-top" alt="<%= book.title %>" style="height: 180px; object-fit: cover; background: #eef2f4;">
+                        <img src="/images/<%= book.image ? (book.image.includes('.') ? book.image : book.image + '.jpg') : 'default.jpg' %>" class="card-img-top" alt="<%= book.title %>" style="height: 180px; object-fit: cover; background: #eef2f4;">
                         
                         <div class="card-body d-flex flex-column">
                             <h2 class="card-title fs-5 mb-2"><%= book.title %></h2>
@@ -16,7 +20,6 @@
                         </div>
                     </a>
 
-                    
                     <div class="card-footer bg-white border-top-0 pt-0 pb-3 px-3">
                         <button class="btn btn-danger btn-sm w-100" onclick="deleteBook('<%= book.id %>')">
                             Видалити
@@ -28,7 +31,6 @@
         <% }) %>
     </div>
 </main>
-
 
 <script>
   async function deleteBook(id) {

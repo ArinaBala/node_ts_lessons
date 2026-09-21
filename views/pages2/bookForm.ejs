@@ -1,0 +1,23 @@
+<form method="POST" action="/books/add-book" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label for="inputTitle" class="form-label">Title</label>
+    <input type="text" name="title" class="form-control" id="inputTitle" required>
+  </div>
+  <div class="mb-3">
+    <label for="inputPrice" class="form-label">Price</label>
+    <input type="text" name="price" class="form-control" id="inputPrice" required>
+  </div>
+  <div class="mb-3 form-check">
+    <input type="checkbox" checked name="is_active" class="form-check-input" id="exampleCheck1">
+    <label class="form-check-label" for="exampleCheck1">Is active</label>
+  </div>
+  <div class="mb-3">
+    <label for="inputYear" class="form-label">Year</label>
+    <input type="number" name="year" class="form-control" id="inputYear">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Image</label>
+    <input type="file" name="image" class="form-control">
+  </div>
+  <button type="submit" class="btn btn-primary">Add Book</button>
+</form>
