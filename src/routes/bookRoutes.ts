@@ -1,54 +1,39 @@
 import { Router, Request, Response } from "express";
 import { BookType } from "../types/BookType.js";
 import { BookResponceType } from "../types/BookResponceType.js";
-import { pool } from "../db/database.js";
-import path from "node:path"
-import multer from "multer"
-
-declare global {
-  namespace Express {
-    interface Request {
-      image?: string;
-    }
-  }
-}
+import upload from "../middlewares/multer.js";
+import path from "node:path";
+import fs from "node:fs/promises";
+import 'dotenv/config';
 
 type BookCreateType = Omit<BookType, "id">;
  
 const bookRouter = Router();
 
- const storage = multer.diskStorage({
-  destination:(req,file,cb)=>{
-    cb(null,path.join("public","images"))
-  },
-  filename:(req,file,cb)=>{
-    const uniqueFileName = Date.now()+'_'+file.originalname
-    req.image = uniqueFileName
-    cb(null,uniqueFileName)
-  }
-})
-const upload = multer({storage})
-
-
+// Отображение формы добавления книги
 bookRouter.get(
   "/add-book",
   (
     req: Request,
     res: Response
-  ) =>{
-    res.render("pages/bookForm", {title: "Add Book"})
+  ) => {
+    res.render("pages2/bookForm", { title: "Add Book" });
   },
 );
 
+// POST: Добавление новой книги через json-server
 bookRouter.post(
   "/add-book",
   upload.single("image"),
   async (req: Request, res: Response) => {
     try {
+      console.log("[ADD BOOK] Отримано запит на додавання книги. Body:", req.body);
+      console.log("[ADD BOOK] Файл зображення:", req.file);
+
       const { title, price, year } = req.body;
       
-      // Проверка на пустой title, чтобы не падало с ошибкой
       if (!title || title.trim() === "") {
+        console.log("[ADD BOOK] Помилка: Назва порожня");
         return res.status(400).send("Title cannot be empty");
       }
 
@@ -57,57 +42,53 @@ bookRouter.post(
       const publicationYear = year ? Number(year) : null;
       const parsedPrice = price ? Number(price) : 0;
 
-      // Записываем книгу в облачную базу данных PostgreSQL
-      const query = `
-        INSERT INTO books (title, price, is_active, image, publication_year) 
-        VALUES ($1, $2, $3, $4, $5) 
-        RETURNING *;
-      `;
-      const values = [title, parsedPrice, is_active, imageName, publicationYear];
-      
-      await pool.query(query, values);
+      const newBook = {
+        title,
+        price: parsedPrice,
+        is_active,
+        image: imageName,
+        publication_year: publicationYear
+      };
 
-      // После успешного добавления перенаправляем пользователя на каталог книг
+      console.log("[ADD BOOK] Надсилаємо запит на json-server:", `${process.env.PATH_TO_JSON_SERVER}/books`);
+
+      const response = await fetch(`${process.env.PATH_TO_JSON_SERVER}/books`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newBook)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[ADD BOOK] Помилка від json-server:", errorText);
+        throw new Error("Не вдалося додати книгу до json-server");
+      }
+
+      const result = await response.json();
+      console.log("[ADD BOOK] Книгу успішно додано:", result);
+
       return res.redirect("/books");
 
     } catch (error) {
-      console.error("Помилка при додаванні книги:", error);
+      console.error("[ADD BOOK] Критична помилка:", error);
       return res.status(500).send("Internal server error");
     }
   }
 );
 
-// 1. Получение всех книг (каталог) с поддержкой поиска по названию
+// GET: Отримання всіх книжок через json-server
 bookRouter.get(
   "/",
   async (
-    req: Request<{}, any, null, { title?: string }>,
+    req: Request<{}, BookResponceType, null, { title: string }>,
     res: Response,
   ) => {
     try {
-      const { title } = req.query;
-      let result;
-
-     if (title !== undefined && title !== "undefined" && title.trim() !== "") {
-        result = await pool.query(
-          "SELECT * FROM books WHERE title ILIKE $1",
-          [`%${title}%`]
-        );
-      } else {
-        // Убираем фильтр по is_active, чтобы гарантированно забрать все 10 книг
-        result = await pool.query("SELECT * FROM books ORDER BY id ASC");
-      }
-
-      
-
-      const books = result.rows;
-      
-console.log("Кількість книг з бази:", books.length); // Что выведет в консоль терминала?
-console.log("Список:", books);
-      
-      // Рендерим страницу каталога books.ejs
-      res.render("pages2/books", { books, title: "Books" });
-
+      const data = await fetch(`${process.env.PATH_TO_JSON_SERVER}/books`);
+      const json = await data.json();
+      res.render("pages2/books", { books: json, title: "Books" });
     } catch (error) {
       console.error(error);
       res.status(500).send("Internal server error");
@@ -115,109 +96,55 @@ console.log("Список:", books);
   },
 );
 
-
-// ВНИМАНИЕ: Роут `/:id` для HTML-страницы мы перенесли в `server.ts`, 
-// чтобы он рендерил шаблон `book-detail.ejs`, а не отдавал JSON. 
-// Поэтому здесь мы его удалили, чтобы он не перехватывал запросы!
-
-// API: Добавление новой книги (оставляем для POST-запросов)
-bookRouter.post("/", async (req: Request<{}, BookResponceType, BookCreateType>, res: Response) => {
-  const body = req.body;
-  const response: BookResponceType = {
-    data: null,
-    error: null,
-    status: 500,
-  };
-
-  if (body !== undefined && body.title && body.title.trim() !== "") {
-    try {
-      const query = `
-        INSERT INTO books (title, price, is_active, image) 
-        VALUES ($1, $2, $3, $4) 
-        RETURNING *;
-      `;
-      const values = [body.title, body.price, body.is_active ?? true, body.image || 'default.jpg'];
-      const result = await pool.query(query, values);
-
-      response.data = result.rows[0];
-      response.status = 201;
-    } catch (error) {
-      console.error(error);
-      response.error = "Internal server error";
-      response.status = 500;
-    }
-  } else {
-    response.error = "Invalid request body or empty title";
-    response.status = 400;
-  }
-
-  res.status(response.status).json(response);
-});
-
-// API: Удаление книги по ID
+// DELETE: Удаление книги по ID (с удалением файла картинки и записи из json-server)
 bookRouter.delete("/:id", async (req: Request<{ id: string }, BookResponceType>, res: Response) => {
-  const id = +req.params.id;
+  const id = req.params.id;
   const response: BookResponceType = {
     data: null,
     error: null,
     status: 200,
   };
 
-  try {
-    const result = await pool.query(
-      "DELETE FROM books WHERE id = $1 RETURNING *",
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      response.status = 404;
-      response.error = "The book is not found or not deleted";
-    } else {
-      response.data = result.rows[0];
-      response.status = 200;
-    }
-  } catch (error) {
-    console.error(error);
-    response.status = 500;
-    response.error = "Internal server error";
-  }
-
-  res.status(response.status).json(response);
-});
-
-// API: Обновление книги по ID
-bookRouter.put("/:id", async (req: Request<{ id: string }, BookResponceType, BookCreateType>, res: Response) => {
-  const id = +req.params.id;
-  const body = req.body;
-  const response: BookResponceType = {
-    data: null,
-    error: null,
-    status: 200,
-  };
-
-  if (!body || !body.title || body.title.trim() === "") {
-    response.status = 400;
-    response.error = "Invalid update data or empty title";
-    return res.status(response.status).json(response);
-  }
+  console.log(`[DELETE] Отримано запит на видалення книги з ID: ${id}`);
 
   try {
-    const query = `
-      UPDATE books 
-      SET title = $1, price = $2, is_active = $3 
-      WHERE id = $4 
-      RETURNING *;
-    `;
-    const values = [body.title, body.price, body.is_active, id];
-    const result = await pool.query(query, values);
-
-    if (result.rows.length === 0) {
+    const getResponse = await fetch(`${process.env.PATH_TO_JSON_SERVER}/books/${id}`);
+    
+    if (!getResponse.ok) {
       response.status = 404;
       response.error = "The book is not found";
-    } else {
-      response.data = result.rows[0];
-      response.status = 200;
+      return res.status(response.status).json(response);
     }
+
+    const book = await getResponse.json() as BookType;
+
+    if (book.image && book.image !== 'default.jpg') {
+      const imagePath = path.join(process.cwd(), "public", "images", book.image);
+      try {
+        await fs.unlink(imagePath);
+        console.log(`Файл картинки ${book.image} успішно видалено з сервера.`);
+      } catch (fileError: any) {
+        if (fileError.code === 'ENOENT') {
+          console.log(`[DELETE] Файл картинки ${book.image} вже відсутній на диска.`);
+        } else {
+          console.log("Не вдалося видалити файл картинки:", fileError);
+        }
+      }
+    }
+
+    const deleteRes = await fetch(`${process.env.PATH_TO_JSON_SERVER}/books/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!deleteRes.ok) {
+      response.status = 500;
+      response.error = "Failed to delete book from json-server";
+      return res.status(response.status).json(response);
+    }
+
+    response.data = book as any;
+    response.status = 200;
+
   } catch (error) {
     console.error(error);
     response.status = 500;
@@ -227,7 +154,84 @@ bookRouter.put("/:id", async (req: Request<{ id: string }, BookResponceType, Boo
   res.status(response.status).json(response);
 });
 
+// PUT: Обновление книги по ID (с поддержкой загрузки нового изображения через multer)
+bookRouter.put("/:id", upload.single("image"), async (req: Request<{ id: string }, BookResponceType>, res: Response) => {
+  const id = req.params.id;
+  const response: BookResponceType = {
+    data: null,
+    error: null,
+    status: 200,
+  };
 
+  try {
+    // 1. Получаем текущую книгу из json-server, чтобы узнать старое имя файла картинки
+    const getRes = await fetch(`${process.env.PATH_TO_JSON_SERVER}/books/${id}`);
+    if (!getRes.ok) {
+      response.status = 404;
+      response.error = "The book is not found";
+      return res.status(response.status).json(response);
+    }
+    const oldBook = await getRes.json() as BookType;
 
- 
+    const { title, price, is_active } = req.body;
+
+    if (!title || title.trim() === "") {
+      response.status = 400;
+      response.error = "Invalid update data or empty title";
+      return res.status(response.status).json(response);
+    }
+
+    let imageName = oldBook.image; // По умолчанию оставляем старую картинку
+
+    // 2. Если пользователь загрузил новый файл картинки
+    if (req.file) {
+      imageName = req.file.filename;
+
+      // Удаляем старый файл с диска, если он существовал и не был дефолтным
+      if (oldBook.image && oldBook.image !== 'default.jpg') {
+        const oldImagePath = path.join(process.cwd(), "public", "images", oldBook.image);
+        try {
+          await fs.unlink(oldImagePath);
+          console.log(`[PUT] Старий файл картинки ${oldBook.image} успішно видалено.`);
+        } catch (fileError) {
+          console.log("[PUT] Старий файл картинки на диску не знайдено або вже видалено.");
+        }
+      }
+    }
+
+    const updatedData = {
+      title,
+      price: Number(price),
+      is_active: is_active === 'true' || is_active === true,
+      image: imageName
+    };
+
+    // 3. Отправляем обновленные данные на json-server
+    const updateRes = await fetch(`${process.env.PATH_TO_JSON_SERVER}/books/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updatedData)
+    });
+
+    if (!updateRes.ok) {
+      response.status = 500;
+      response.error = "Failed to update book in json-server";
+      return res.status(response.status).json(response);
+    }
+
+    const updatedBook = await updateRes.json();
+    response.data = updatedBook;
+    response.status = 200;
+
+  } catch (error) {
+    console.error("Помилка при оновленні:", error);
+    response.status = 500;
+    response.error = "Internal server error";
+  }
+
+  res.status(response.status).json(response);
+});
+
 export default bookRouter;

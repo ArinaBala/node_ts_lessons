@@ -10,11 +10,11 @@ GET http://localhost:4200/books?title=test
  
  
 ###
-POST http://localhost:4200/books
+POST http://localhost:3000/authors
 Content-Type: application/json
  
 {
-    "title": "Чистий код",
-    "price": 1000,
-    "is_active": true
+    "id": "19",
+    "name": "diana",
+    "surname": "gliba"
 }

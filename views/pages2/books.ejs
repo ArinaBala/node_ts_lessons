@@ -1,7 +1,6 @@
 <main class="container my-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Books</h1>
-        <!-- Кнопка перехода на форму добавления -->
         <a href="/books/add-book" class="btn btn-success">+ Додати нову книгу</a>
     </div>
 
@@ -20,10 +19,23 @@
                         </div>
                     </a>
 
+                    <!-- Блок с кнопками управления -->
                     <div class="card-footer bg-white border-top-0 pt-0 pb-3 px-3">
-                        <button class="btn btn-danger btn-sm w-100" onclick="deleteBook('<%= book.id %>')">
-                            Видалити
-                        </button>
+                        <div class="d-flex gap-2">
+                            <a href="/books/<%= book.id %>" class="btn btn-primary btn-sm flex-grow-1">Купити</a>
+                            <!-- Кнопка Edit, открывающая модальное окно -->
+                            <button type="button" class="btn btn-warning btn-sm" 
+                                    data-id="<%= book.id %>"
+                                    data-title="<%= book.title %>"
+                                    data-price="<%= book.price %>"
+                                    data-active="<%= book.is_active %>"
+                                    onclick="openEditModal(this)">
+                                Edit
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteBook('<%= book.id %>')">
+                                Видалити
+                            </button>
+                        </div>
                     </div>
 
                 </div>
@@ -32,19 +44,98 @@
     </div>
 </main>
 
+<!-- Модальное окно для редактирования книги -->
+<div class="modal fade" id="editBookModal" tabindex="-1" aria-labelledby="editBookModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="editBookForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editBookModalLabel">Редагувати книгу</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editTitle" class="form-label">Назва книжки</label>
+            <input type="text" class="form-control" id="editTitle" name="title" required>
+          </div>
+          <div class="mb-3">
+            <label for="editPrice" class="form-label">Ціна (грн)</label>
+            <input type="number" class="form-control" id="editPrice" name="price" required>
+          </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
+            <label class="form-check-label" for="editIsActive">Активна</label>
+          </div>
+          <div class="mb-3">
+            <label for="editImage" class="form-label">Змінити малюнок (необов'язково)</label>
+            <input type="file" class="form-control" id="editImage" name="image">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+          <button type="submit" class="btn btn-primary">Зберегти зміни</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Скрипты для модального окна и запросов -->
 <script>
-  async function deleteBook(id) {
-    if (!confirm("Ви впевнені, що хочете видалити цю книжку?")) return;
+  let currentBookId = null;
+
+  // Открытие модального окна и заполнение полей текущими данными
+  function openEditModal(button) {
+    currentBookId = button.getAttribute('data-id');
+    document.getElementById('editTitle').value = button.getAttribute('data-title');
+    document.getElementById('editPrice').value = button.getAttribute('data-price');
+    document.getElementById('editIsActive').checked = button.getAttribute('data-active') === 'true';
+    
+    const modal = new bootstrap.Modal(document.getElementById('editBookModal'));
+    modal.show();
+  }
+
+  // Отправка отредактированных данных (включая картинку) через FormData
+  document.getElementById('editBookForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData();
+    formData.append('title', document.getElementById('editTitle').value);
+    formData.append('price', document.getElementById('editPrice').value);
+    formData.append('is_active', document.getElementById('editIsActive').checked);
+
+    const imageFile = document.getElementById('editImage').files[0];
+    if (imageFile) {
+      formData.append('image', imageFile);
+    }
 
     try {
-      const response = await fetch(`/books/${id}`, {
-        method: 'DELETE',
+      const response = await fetch(`/books/${currentBookId}`, {
+        method: 'PUT',
+        body: formData // Отправляем как multipart/form-data для поддержки multer
       });
 
       if (response.ok) {
-        window.location.reload(); 
+        alert("Книжку успішно оновлено!");
+        window.location.reload();
       } else {
-        alert("Помилка при видаленні книжки");
+        alert("Помилка при оновленні книжки");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Сталася помилка при відправці запиту");
+    }
+  });
+
+  // Функция удаления (остается без изменений)
+  async function deleteBook(id) {
+    if (!confirm("Ви впевнені, що хочете видалити цю книжку?")) return;
+    try {
+      const response = await fetch(`/books/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        alert("Помилка при видаленні");
       }
     } catch (error) {
       console.error("Error:", error);
