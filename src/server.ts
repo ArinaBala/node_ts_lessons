@@ -10,6 +10,9 @@ import { fileURLToPath } from "node:url"
 import expressEjsLayouts from "express-ejs-layouts"
 import { pool } from "./db/database.js"
 import { loggerMiddleware } from "./middlewares/logger_Middleware.js"
+import cookieParser from "cookie-parser";
+import { authMiddleware } from "./middlewares/authMiddleware.js"
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,8 +22,10 @@ const PORT = process.env.PORT || 3200
 const HOST = process.env.HOST || "http://localhost"
 
 const app = express()
+app.use(cookieParser());
 
-app.use(loggerMiddleware)
+app.use(loggerMiddleware) 
+app.use(authMiddleware)
 
 
 app.use(express.urlencoded({extended:true}))
@@ -35,6 +40,33 @@ app.use(expressEjsLayouts)
 app.set("layout", path.join(__dirname, "..","views", "layouts", "main"))
 
 app.use(express.json())
+
+
+
+app.get("/cookie", (req: Request, res: Response) => {
+  res.cookie("username", "aaaaa",{
+    httpOnly: true,
+    maxAge: 2 * 60 * 1000,
+  });
+  res.cookie("email", "bibibibi@gmai.com");
+  res.send("Cookie created");
+});
+
+app.get("/cookie-read", (req: Request, res: Response) => {
+  if (req.cookies && req.cookies.username) {
+    res.send(`Welcome, ${req.cookies.username}`);
+  } else {
+    res.send(`Welcome, guest`);
+  }
+});
+app.get("/cookie-remove", (req: Request, res: Response) => {
+  if (req.cookies && req.cookies.username) {
+    res.clearCookie("username");
+    res.send(`Removed cookie`);
+  } else {
+    res.send(`Cookie not found`);
+  }
+});
 
 // Главная страница
 app.get('/', (req: Request<null, null, null, { title: string }>, res) => {
@@ -111,6 +143,54 @@ app.get('/authors/:id', (req, res) => {
     });
     res.end(JSON.stringify(response));
 });
+
+app.get("/login", (req: Request, res: Response) => {
+    res.render("pages2/login", { title: "Login" });
+});
+
+// Обработка отправки формы: записываем имя в куки и кидаем на главную
+app.post("/login", (req: Request, res: Response) => {
+    const { username } = req.body;
+    if (username && username.trim() !== "") {
+        res.cookie("username", username.trim(), {
+            httpOnly: true,
+            maxAge: 24 * 60 * 60 * 1000, // 1 день
+        });
+    }
+    res.redirect("/");
+});
+
+// Кнопка выхода: удаляем куки и кидаем на главную
+app.get("/logout", (req: Request, res: Response) => {
+    res.clearCookie("username");
+    res.redirect("/");
+});
+
+
+// 2. Сторінка реєстрації (форма)
+app.get("/register", (req: Request, res: Response) => {
+    res.render("pages2/register", { title: "Register" });
+});
+
+// Обробка форми реєстрації
+app.post("/register", (req: Request, res: Response) => {
+    const { username } = req.body;
+    if (username && username.trim() !== "") {
+        res.cookie("username", username.trim(), {
+            httpOnly: true,
+            maxAge: 24 * 60 * 60 * 1000,
+        });
+    }
+    res.redirect("/");
+});
+
+// Вихід із системи (знищення куки)
+app.get("/logout", (req: Request, res: Response) => {
+    res.clearCookie("username");
+    res.redirect("/");
+});
+
+
 
 app.listen(Number(PORT), () => {
     cl(`Server has been started http://localhost:${PORT}`)

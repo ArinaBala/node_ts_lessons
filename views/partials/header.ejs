@@ -1,27 +1,38 @@
 <header>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
-            <!-- Логотип или название сайта -->
-            <a class="navbar-brand fw-bold" href="/">Book Store</a>
+            <!-- Логотип / Название сайта -->
+            <a class="navbar-brand fw-bold" href="/">Library</a>
             
-            <!-- Кнопка бургер-меню (появляется только на мобильных) -->
+            <!-- Кнопка бургер-меню для мобилок -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
-            <!-- Ссылки навигации, которые прячутся в бургер на мобилках -->
+            <!-- Навигация -->
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
                         <a class="nav-link" href="/">Головна</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/books">Книги</a>
+                        <a class="nav-link" href="/register">Реєстрація</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/contacts">Контакти</a>
+                        <a class="nav-link" href="/books/add-book">Add book</a>
                     </li>
                 </ul>
+
+                <!-- Правая часть: Кнопки авторизации или приветствие -->
+                <div class="d-flex align-items-center gap-2">
+                    <% if (username && username !== "guest") { %>
+                        <span class="text-white me-2">Вітаю, <strong><%= username %></strong>!</span>
+                        <a href="/logout" class="btn btn-outline-danger btn-sm">Вийти</a>
+                    <% } else { %>
+                        <a href="/login" class="btn btn-outline-light btn-sm">Увійти</a>
+                        <a href="/register" class="btn btn-primary btn-sm">Зареєструватися</a>
+                    <% } %>
+                </div>
             </div>
         </div>
     </nav>

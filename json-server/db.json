@@ -312,6 +312,5 @@
       "author_id": 18,
       "book_id": 20
     }
-  ],
-  "$schema": "./node_modules/json-server/schema.json"
+  ]
 }
